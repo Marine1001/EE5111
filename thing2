@@ -1,0 +1,92 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Sat Sep 21 01:59:34 2019
+
+@author: 张宇萌
+"""
+
+from AWSIoTPythonSDK.MQTTLib import AWSIoTMQTTShadowClient
+import  time, datetime 
+
+# A random programmatic shadow client ID.
+SHADOW_CLIENT = "myShadowClient1"
+
+# The unique hostname that &IoT; generated for 
+# this device.
+HOST_NAME = "apy4bvo97aleg-ats.iot.us-west-2.amazonaws.com"
+
+# The relative path to the correct root CA file for &IoT;, 
+# which you have already saved onto this device.
+ROOT_CA = "CA.pem.txt"
+
+# The relative path to your private key file that 
+# &IoT; generated for this device, which you 
+# have already saved onto this device.
+PRIVATE_KEY = "94f5a20b0f-private.pem.key"
+
+# The relative path to your certificate file that 
+# &IoT; generated for this device, which you 
+# have already saved onto this device.
+CERT_FILE = "94f5a20b0f-certificate.pem.crt"
+
+# A programmatic shadow handler name prefix.
+SHADOW_HANDLER = "EE5111_thing2_A0206706J"
+
+# Automatically called whenever the shadow is updated.
+def myShadowUpdateCallback(payload, responseStatus, token):
+  print()
+  print('UPDATE: $aws/things/' + SHADOW_HANDLER + 
+    '/shadow/update/#')
+  print("payload = " + payload)
+  print("responseStatus = " + responseStatus)
+  print("token = " + token)
+
+# Create, configure, and connect a shadow client.
+myShadowClient = AWSIoTMQTTShadowClient(SHADOW_CLIENT)
+myShadowClient.configureEndpoint(HOST_NAME, 8883)
+myShadowClient.configureCredentials(ROOT_CA, PRIVATE_KEY,
+  CERT_FILE)
+myShadowClient.configureConnectDisconnectTimeout(10)
+myShadowClient.configureMQTTOperationTimeout(5)
+myShadowClient.connect()
+
+# Create a programmatic representation of the shadow.
+myDeviceShadow = myShadowClient.createShadowHandlerWithName(
+  SHADOW_HANDLER, True)
+
+# Keep generating random test data until this script 
+# stops running.
+# To stop running this script, press Ctrl+C.
+# 读取数据
+filename = 'TrainFD__002.txt'
+file_to_read = open(filename, 'r')
+#
+str_header = '{"state":{"reported":{'
+str_tail = '}}}'
+
+Matric_number = 'A0206706J'
+
+while True:
+    # 在循环中读取每一行
+    lines = file_to_read.readline()
+    # 将字符串按" "切分成字符串(参数)数组
+    parameter_list = lines.split(" ")
+    # 先将ID保存下
+    ID = parameter_list[0]
+    # 将ID变为编号+ID
+    parameter_list[0] = 'FD002_' + parameter_list[0]
+    
+    
+    parameter_str = []
+    for i in range(3, len(parameter_list)-3):
+        parameter_str.append('"P'+str(i-2) + '":"' + parameter_list[i] + '",')
+
+    send_string = str_header + '"id":' + '"' + 'FD002_'+ID + '", ' + '"timestamp":' + '"' + str(datetime.datetime.now()) + '",'\
+                  + ''.join(parameter_str)\
+                        + '"Matric_number":' + '"' + Matric_number + '"'+ str_tail
+    print(send_string)
+
+    myDeviceShadow.shadowUpdate(send_string, myShadowUpdateCallback, 5)
+
+    # Wait for this test value to be added.
+    time.sleep(10)
